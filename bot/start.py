@@ -5,8 +5,31 @@ import sys
 import multiprocessing
 import time
 import random
+from bs4 import BeautifulSoup
+import urllib2
 
-channel_url = "twitch.tv/"
+headers = {'User-Agent': 'Mozilla 5.10'}
+url = 'https://free-proxy-list.net'
+request = urllib2.Request(url, None, headers)
+page = urllib2.urlopen(request)
+soup = BeautifulSoup(page, "html.parser")
+table = soup.findAll('tbody')[0]('tr')
+
+i = 0
+data = []
+for row in table:
+    cols = row.find_all('td')
+    cols = [elem.text for elem in cols]
+    data.append([elem for elem in cols if elem])
+    i += 1
+
+k = 0
+proxies = []
+while k < 40:
+    proxies.append([data[k][0] + ":" + data[k][1]])
+    k = k + 1
+
+channel_url = "www.twitch.tv/"
 processes = []
 CUR_FILE = 'current_viewers'
 
@@ -23,7 +46,7 @@ def get_channel():
 def get_proxies():
     # Reading the list of proxies
     try:
-        with open('proxylist') as f:
+        with open(u'proxylist') as f:
             lines = ['http://{0}'.format(line.rstrip("\n")) for line in f]
     except IOError as e:
         print "An error has occurred while trying to read the list of proxies: %s" % e.strerror
@@ -84,7 +107,7 @@ def open_url(url, proxy):
 
 def prepare_processes():
     global processes
-    proxies = get_proxies()
+    #    proxies = get_proxies()
     if len(proxies) < 1:
         print "An error has occurred while preparing the process: Not enough proxy servers. Need at least 1 to function."
         sys.exit(1)
@@ -95,7 +118,7 @@ def prepare_processes():
             multiprocessing.Process(
                 target=open_url, kwargs={
                     "url": get_url(), "proxy": {
-                        "http": proxy}}))
+                        "http": proxy[0]}}))
         print '.',
     print ''
 
