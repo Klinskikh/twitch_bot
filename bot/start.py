@@ -9,36 +9,37 @@ from bs4 import BeautifulSoup
 import urllib2
 
 
-#get ip list of proxies
-headers = {'User-Agent': 'Mozilla 5.10'}
-url = 'https://free-proxy-list.net'
-request = urllib2.Request(url, None, headers)
-page = urllib2.urlopen(request)
-soup = BeautifulSoup(page, "html.parser")
-table = soup.findAll('tbody')[0]('tr')
-
-i = 0
-data = []
-for row in table:
-    cols = row.find_all('td')
-    cols = [elem.text for elem in cols]
-    data.append([elem for elem in cols if elem])
-    i += 1
-
-k = 0
-proxies1 = []
-while k < 20:
-    proxies1.append([data[k][0] + ":" + data[k][1]])
-    k = k + 1
-
-#write result in file
-f = open("proxylist", 'w')
-f.writelines("%s\n" % i for i in proxies1)
-f.close()
-
 channel_url = "www.twitch.tv/"
 processes = []
 CUR_FILE = 'current_viewers'
+
+
+def get_proxy_list():
+    # get ip list of proxies
+    headers = {'User-Agent': 'Mozilla 5.10'}
+    url = 'https://free-proxy-list.net'
+    request = urllib2.Request(url, None, headers)
+    page = urllib2.urlopen(request)
+    soup = BeautifulSoup(page, "html.parser")
+    table = soup.findAll('tbody')[0]('tr')
+    k = 0
+    data = []
+    proxies1 = []
+    for row in table:
+        cols = row.find_all('td')
+        cols = [elem.text for elem in cols]
+        data.append([elem for elem in cols if elem])
+    while k < 6:
+        proxies1.append([data[k][0] + ":" + data[k][1]])
+        k += 1
+    try:
+        with open("proxylist", 'w') as f:
+            f.writelines("%s\n" % i for i in proxies1)
+    except IOError as e:
+        print "An error has occurred while trying to write the list of proxies: %s" % e.strerror
+        sys.exit(1)
+    return proxies1
+
 
 def get_channel():
     # Reading the channel name - passed as an argument to this script
@@ -52,6 +53,7 @@ def get_channel():
 
 def get_proxies():
     # Reading the list of proxies
+    proxies1 = get_proxy_list()
     try:
         with open(u'proxylist') as f:
             lines = ['http://{0}'.format(line.rstrip("\n").rstrip("']\\").lstrip("['u\\")) for line in f]
@@ -65,9 +67,13 @@ def get_proxies():
 def get_url():
     # Getting the json with all data regarding the stream
     try:
-        response = subprocess.Popen(
-            ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
-             channel_url, "-j"], stdout=subprocess.PIPE).communicate()[0]
+        with open("twitch_token") as tn:
+            for tn_line in tn:
+                tn_line = tn_line.rstrip('\n')
+                response = subprocess.Popen(
+                    ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
+                     "--twitch-oauth-token=" + tn_line, channel_url, "-j"],
+                    stdout=subprocess.PIPE).communicate()[0]
     except subprocess.CalledProcessError:
         print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
         sys.exit(1)
