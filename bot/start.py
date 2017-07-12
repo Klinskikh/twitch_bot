@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import requests
 import subprocess
 import json
@@ -21,24 +22,21 @@ def get_proxy_list():
     request = urllib2.Request(url, None, headers)
     page = urllib2.urlopen(request)
     soup = BeautifulSoup(page, "html.parser")
-    table = soup.findAll('tbody')[0]('tr')
-    k = 0
+    table = soup.findAll('tbody')[0]('tr')                          #выборка в таблице строк
     data = []
     proxies1 = []
-    for row in table:
+    for row in table:                                               #создаем таблицу с данными, полученными супом
         cols = row.find_all('td')
         cols = [elem.text for elem in cols]
         data.append([elem for elem in cols if elem])
-    while k < 6:
-        proxies1.append([data[k][0] + ":" + data[k][1]])
-        k += 1
+    for k in range(0, len(data)):                                   #создание пары прокси и порт
+        proxies1.append(data[k][0] + ":" + data[k][1])
     try:
-        with open("proxylist", 'w') as f:
-            f.writelines("%s\n" % i for i in proxies1)
+        with open("proxylist.json", 'w+') as f:                     #запись результата в файл в json формате
+            f.write(json.dumps(proxies1))
     except IOError as e:
         print "An error has occurred while trying to write the list of proxies: %s" % e.strerror
         sys.exit(1)
-    return proxies1
 
 
 def get_channel():
@@ -140,6 +138,9 @@ if __name__ == "__main__":
     print "Obtaining the channel..."
     get_channel()
     print "Obtained the channel"
+    print "Obtain and safe proxy list in file"
+    get_proxy_list()
+    print "DONE"
     print "Preparing the processes..."
     prepare_processes()
     with open(CUR_FILE, 'w+') as curf:

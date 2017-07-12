@@ -1,2 +1,3 @@
 bot/twitch_token
 bot/proxylist
+bot/*.json
