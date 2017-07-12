@@ -103,7 +103,7 @@ def get_urls():                                                     #получ�
                         stdout=subprocess.PIPE).communicate()[0]
                 except:
                     with open('BAD_TOKEN', 'r') as f:
-                        bad_token = f.list()
+                        bad_token = list(f.read())
                         bad_token.append(token)
                     with open('BAD_TOKEN', 'w+') as f:
                         f.write(bad_token)
