@@ -13,6 +13,8 @@ import urllib2
 channel_url = "www.twitch.tv/"
 processes = []
 CUR_FILE = 'current_viewers'
+URLS = 'urls.json'
+USED_URLS = 'used_token.json'
 
 
 def get_proxy_list():
@@ -69,8 +71,7 @@ def get_url():
             for tn_line in tn:
                 tn_line = tn_line.rstrip('\n')
                 response = subprocess.Popen(
-                    ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
-                     "--twitch-oauth-token=" + tn_line, channel_url, "-j"],
+                    ["livestreamer", "--twitch-oauth-token=" + tn_line, channel_url, "-j"],
                     stdout=subprocess.PIPE).communicate()[0]
     except subprocess.CalledProcessError:
         print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
@@ -89,6 +90,36 @@ def get_url():
             sys.exit(1)
 
     return url
+
+def get_urls():                                                     #получаем ссылки для просмотра
+    try:
+        with open('twitch_token.json', 'r') as tokens:
+            token_list = json.loads(tokens.read())                  #создаем лист токенов в json
+            for token in token_list:
+                response = subprocess.Popen(                        #запускаем субпроцесс получения ссылки
+                    ['livestreamer', '--twitch-oauth-token=' + token, channel_url, "-j"],
+                    stdout=subprocess.PIPE).communicate()[0]
+                try:
+                    url = json.loads(response)['streams']['audio_only']['url']
+                except:
+                    try:
+                        url = json.loads(response)['streams']['worst']['url']
+                    except (ValueError, KeyError):
+                        print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
+                        sys.exit(1)
+                with open('URLS', 'r') as f:
+                    urls = list(f.read())
+                    urls.append(url)
+                with open('URLS', 'w+') as f:
+                    f.write(urls)
+    except subprocess.CalledProcessError:
+        print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
+        sys.exit(1)
+    except OSError:
+        print "An error has occurred while trying to use livestreamer package. Is it installed? Do you have Python in your PATH variable?"
+
+
+
 
 
 def open_url(url, proxy):
@@ -141,6 +172,9 @@ if __name__ == "__main__":
     print "Obtain and safe proxy list in file"
     get_proxy_list()
     print "DONE"
+    print "Otraining urls list"
+    get_urls()
+    print "Ontained urls list"
     print "Preparing the processes..."
     prepare_processes()
     with open(CUR_FILE, 'w+') as curf:
