@@ -96,17 +96,17 @@ def get_urls():                                                     #получ�
         with open('twitch_token.json', 'r') as tokens:
             token_list = json.loads(tokens.read())                  #создаем лист токенов в json
             for token in token_list:
-                try:
-                    response = subprocess.Popen(
+                # try:
+                response = subprocess.Popen(
                         ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
                         "--twitch-oauth-token=" + token, channel_url, "-j"],
                         stdout=subprocess.PIPE).communicate()[0]
-                except:
-                    with open('BAD_TOKEN', 'r') as f:
-                        bad_token = list(f.read())
-                        bad_token.append(token)
-                    with open('BAD_TOKEN', 'w+') as f:
-                        f.write(bad_token)
+                # except:
+                #     with open('BAD_TOKEN', 'r') as f:
+                #         bad_token = list(f.read())
+                #         bad_token.append(token)
+                #     with open('BAD_TOKEN', 'w+') as f:
+                #         f.write(bad_token)
                 try:
                     url = json.loads(response)['streams']['audio_only']['url']
                 except:
