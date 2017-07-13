@@ -15,9 +15,10 @@ processes = []
 CUR_FILE = 'current_viewers'
 URLS = 'urls.json'
 USED_URLS = 'used_token.json'
+BAD_TOKEN = 'bad_token.json'
 
 
-def get_proxy_list():
+def get_proxy_list():                                               #функция готова
     # get ip list of proxies
     headers = {'User-Agent': 'Mozilla 5.10'}
     url = 'https://free-proxy-list.net'
@@ -41,7 +42,7 @@ def get_proxy_list():
         sys.exit(1)
 
 
-def get_channel():
+def get_channel():                                                  #функция готова
     # Reading the channel name - passed as an argument to this script
     if len(sys.argv) >= 2:
         global channel_url
@@ -64,7 +65,7 @@ def get_proxies():
     return lines
 
 
-def get_url():
+def get_url():                                                          #кандидат на исключение, аналог создан
     # Getting the json with all data regarding the stream
     try:
         with open("twitch_token") as tn:
@@ -91,43 +92,38 @@ def get_url():
 
     return url
 
+
 def get_urls():                                                     #получаем ссылки для просмотра
     try:
         with open('twitch_token.json', 'r') as tokens:
+            urls = []
+            bad_token = []
             token_list = json.loads(tokens.read())                  #создаем лист токенов в json
-            for token in token_list:
-                # try:
+            for token in token_list:                                #проходимся по списку токенов с целью получить варианты воспроизведения в json
                 response = subprocess.Popen(
-                        ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
-                        "--twitch-oauth-token=" + token, channel_url, "-j"],
+                        ["livestreamer", "--twitch-oauth-token=" + token, channel_url, "-j"],
                         stdout=subprocess.PIPE).communicate()[0]
-                # except:
-                #     with open('BAD_TOKEN', 'r') as f:
-                #         bad_token = list(f.read())
-                #         bad_token.append(token)
-                #     with open('BAD_TOKEN', 'w+') as f:
-                #         f.write(bad_token)
                 try:
-                    url = json.loads(response)['streams']['audio_only']['url']
+                    url = json.loads(response)['streams']['audio_only']['url']          #ищем ссылку на воспроизведение только со звуком
                 except:
                     try:
-                        url = json.loads(response)['streams']['worst']['url']
-                    except (ValueError, KeyError):
-                        print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
-                        sys.exit(1)
-                with open('URLS', 'r') as f:
-                    urls = list(f.read())
+                        url = json.loads(response)['streams']['worst']['url']           #в противном случае худшее качество
+                    except (ValueError, KeyError):                                      #возможно канал неактивен или токен протух - проверяем это
+                        print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct? Then check token %s" % token
+                        # sys.exit(1)
+                        url = 'bad_token'
+                        bad_token.append(token)
+                if url != 'bad_token':
                     urls.append(url)
-                with open('URLS', 'w+') as f:
-                    f.write(urls)
+            with open(URLS, 'w+') as f:                                                 #записываем результаты в файлы
+                f.write(json.dumps(urls))
+            with open(BAD_TOKEN, 'w+') as f:
+                    f.write(json.dumps(bad_token))
     except subprocess.CalledProcessError:
         print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
         sys.exit(1)
     except OSError:
         print "An error has occurred while trying to use livestreamer package. Is it installed? Do you have Python in your PATH variable?"
-
-
-
 
 
 def open_url(url, proxy):
