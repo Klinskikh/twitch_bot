@@ -52,45 +52,45 @@ def get_channel():                                                  #функц�
         sys.exit(1)
 
 
-def get_proxies():
-    # Reading the list of proxies
-    proxies1 = get_proxy_list()
-    try:
-        with open(u'proxylist') as f:
-            lines = ['http://{0}'.format(line.rstrip("\n").rstrip("']\\").lstrip("['u\\")) for line in f]
-    except IOError as e:
-        print "An error has occurred while trying to read the list of proxies: %s" % e.strerror
-        sys.exit(1)
+# def get_proxies():
+#     # Reading the list of proxies
+#     proxies1 = get_proxy_list()
+#     try:
+#         with open(u'proxylist') as f:
+#             lines = ['http://{0}'.format(line.rstrip("\n").rstrip("']\\").lstrip("['u\\")) for line in f]
+#     except IOError as e:
+#         print "An error has occurred while trying to read the list of proxies: %s" % e.strerror
+#         sys.exit(1)
+#
+#     return lines
 
-    return lines
 
-
-def get_url():                                                          #кандидат на исключение, аналог создан
-    # Getting the json with all data regarding the stream
-    try:
-        with open("twitch_token") as tn:
-            for tn_line in tn:
-                tn_line = tn_line.rstrip('\n')
-                response = subprocess.Popen(
-                    ["livestreamer", "--twitch-oauth-token=" + tn_line, channel_url, "-j"],
-                    stdout=subprocess.PIPE).communicate()[0]
-    except subprocess.CalledProcessError:
-        print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
-        sys.exit(1)
-    except OSError:
-        print "An error has occurred while trying to use livestreamer package. Is it installed? Do you have Python in your PATH variable?"
-
-    # Decoding the url to the worst quality of the stream
-    try:
-        url = json.loads(response)['streams']['audio_only']['url']
-    except:
-        try:
-            url = json.loads(response)['streams']['worst']['url']
-        except (ValueError, KeyError):
-            print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
-            sys.exit(1)
-
-    return url
+# def get_url():                                                          #кандидат на исключение, аналог создан
+#     # Getting the json with all data regarding the stream
+#     try:
+#         with open("twitch_token") as tn:
+#             for tn_line in tn:
+#                 tn_line = tn_line.rstrip('\n')
+#                 response = subprocess.Popen(
+#                     ["livestreamer", "--twitch-oauth-token=" + tn_line, channel_url, "-j"],
+#                     stdout=subprocess.PIPE).communicate()[0]
+#     except subprocess.CalledProcessError:
+#         print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
+#         sys.exit(1)
+#     except OSError:
+#         print "An error has occurred while trying to use livestreamer package. Is it installed? Do you have Python in your PATH variable?"
+#
+#     # Decoding the url to the worst quality of the stream
+#     try:
+#         url = json.loads(response)['streams']['audio_only']['url']
+#     except:
+#         try:
+#             url = json.loads(response)['streams']['worst']['url']
+#         except (ValueError, KeyError):
+#             print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
+#             sys.exit(1)
+#
+#     return url
 
 
 def get_urls():                                                     #получаем ссылки для просмотра - на данном этапе готова
@@ -161,7 +161,6 @@ def prepare_processes():
         print "An error has occurred while preparing the process: Not enough proxy servers. Need at least 1 to function."
         sys.exit(1)
     for url in json.loads(urls.read()):
-        print proxy_in_use[0]
         processes.append(
             multiprocessing.Process(
                 target=open_url, kwargs={
