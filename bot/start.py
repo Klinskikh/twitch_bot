@@ -94,6 +94,8 @@ def get_channel():                                                  #функц�
 
 
 def get_urls():                                                     #получаем ссылки для просмотра - на данном этапе готова
+    with open(BAD_TOKEN, 'w+') as bt_file:
+        bt_file.write('none')
     try:
         with open('twitch_token.json', 'r') as tokens:
             urls = []
@@ -101,7 +103,8 @@ def get_urls():                                                     #получ�
             token_list = json.loads(tokens.read())                  #создаем лист токенов в json
             for token in token_list:                                #проходимся по списку токенов с целью получить варианты воспроизведения в json
                 response = subprocess.Popen(
-                        ["livestreamer", "--twitch-oauth-token=" + token, channel_url, "-j"],
+                        ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
+                         "--twitch-oauth-token=" + token, channel_url, "-j"],
                         stdout=subprocess.PIPE).communicate()[0]
                 try:
                     url = json.loads(response)['streams']['audio_only']['url']          #ищем ссылку на воспроизведение только со звуком
@@ -118,12 +121,46 @@ def get_urls():                                                     #получ�
             with open(URLS, 'w+') as f:                                                 #записываем результаты в файлы
                 f.write(json.dumps(urls))
             with open(BAD_TOKEN, 'w+') as f:
-                    f.write(json.dumps(bad_token))
+                f.write(json.dumps(bad_token))
     except subprocess.CalledProcessError:
         print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
         sys.exit(1)
     except OSError:
         print "An error has occurred while trying to use livestreamer package. Is it installed? Do you have Python in your PATH variable?"
+
+
+def prepare_processes():
+    global processes
+    proxies = open("proxylist.json", 'r')
+    proxy_in_use = list(json.loads(proxies.read()))
+    urls = open(URLS, 'r')
+    used_urls = []
+    if len(proxy_in_use) < 1:
+        print "An error has occurred while preparing the process: Not enough proxy servers. Need at least 1 to function."
+        sys.exit(1)
+    for url in json.loads(urls.read()):
+        processes.append(
+            multiprocessing.Process(
+                target=open_url, kwargs={
+                    "url": url, "proxy_in_use": {
+                        "http": proxy_in_use[0]
+                    }
+                }
+            )
+        )
+        proxy_in_use.remove(proxy_in_use[0])
+        used_urls.append(url)
+        with open('proxylist.json', 'w+') as f:
+            f.write(json.dumps(proxy_in_use))
+    # for proxy in proxies:
+    #     # Preparing the process and giving it its own proxy
+    #     processes.append(
+    #         multiprocessing.Process(
+    #             target=open_url, kwargs={
+    #                 "url": get_url(), "proxy": {
+    #                     "http": proxy}}))
+        print '.',
+    print ''
 
 
 def open_url(url, proxy_in_use):
@@ -148,41 +185,17 @@ def open_url(url, proxy_in_use):
             print "  Connection error for %s" % proxy_in_use["http"]
             errors += 1
             if errors > 10:
+                # processes.remove(
+                #     multiprocessing.Process(
+                #         target=open_url, kwargs={
+                #             "url": url, "proxy_in_use": {
+                #                 "http": proxy_in_use[0]
+                #             }
+                #         }
+                #     )
+                # )
                 break
 
-
-def prepare_processes():
-    global processes
-    proxies = open("proxylist.json", 'r')
-    proxy_in_use = list(json.loads(proxies.read()))
-    urls = open(URLS, 'r')
-    used_urls = []
-    if len(proxy_in_use) < 1:
-        print "An error has occurred while preparing the process: Not enough proxy servers. Need at least 1 to function."
-        sys.exit(1)
-    for url in json.loads(urls.read()):
-        processes.append(
-            multiprocessing.Process(
-                target=open_url, kwargs={
-                    "url": url, "proxy_in_use": {
-                        "http": proxy_in_use[0]
-                    }
-                }
-            )
-        )
-        proxy_in_use.remove(proxy_in_use[0])
-        used_urls.append(urls)
-        with open('proxylist.json', 'w+') as f:
-            f.write(json.dumps(proxy_in_use))
-    # for proxy in proxies:
-    #     # Preparing the process and giving it its own proxy
-    #     processes.append(
-    #         multiprocessing.Process(
-    #             target=open_url, kwargs={
-    #                 "url": get_url(), "proxy": {
-    #                     "http": proxy}}))
-        print '.',
-    print ''
 
 
 if __name__ == "__main__":
