@@ -9,40 +9,40 @@ import random
 from bs4 import BeautifulSoup
 import urllib2
 
-
 channel_url = "www.twitch.tv/"
 processes = []
 CUR_FILE = 'current_viewers'
 URLS = 'urls.json'
 USED_URLS = 'used_token.json'
 BAD_TOKEN = 'bad_token.json'
+FREE_URLS = 'free_urls.json'
 
 
-def get_proxy_list():                                               #функция готова
+def get_proxy_list():  # функция готова
     # get ip list of proxies
     headers = {'User-Agent': 'Mozilla 5.10'}
     url = 'https://free-proxy-list.net'
     request = urllib2.Request(url, None, headers)
     page = urllib2.urlopen(request)
     soup = BeautifulSoup(page, "html.parser")
-    table = soup.findAll('tbody')[0]('tr')                          #выборка в таблице строк
+    table = soup.findAll('tbody')[0]('tr')  # выборка в таблице строк
     data = []
     proxies1 = []
-    for row in table:                                               #создаем таблицу с данными, полученными супом
+    for row in table:  # создаем таблицу с данными, полученными супом
         cols = row.find_all('td')
         cols = [elem.text for elem in cols]
         data.append([elem for elem in cols if elem])
-    for k in range(0, len(data)):                                   #создание пары прокси и порт
+    for k in range(0, len(data)):  # создание пары прокси и порт
         proxies1.append(data[k][0] + ":" + data[k][1])
     try:
-        with open("proxylist.json", 'w+') as f:                     #запись результата в файл в json формате
+        with open("proxylist.json", 'w+') as f:  # запись результата в файл в json формате
             f.write(json.dumps(proxies1))
     except IOError as e:
         print "An error has occurred while trying to write the list of proxies: %s" % e.strerror
         sys.exit(1)
 
 
-def get_channel():                                                  #функция готова
+def get_channel():  # функция готова
     # Reading the channel name - passed as an argument to this script
     if len(sys.argv) >= 2:
         global channel_url
@@ -93,32 +93,36 @@ def get_channel():                                                  #функц�
 #     return url
 
 
-def get_urls():                                                     #получаем ссылки для просмотра - на данном этапе готова
+def get_urls():  # получаем ссылки для просмотра - на данном этапе готова
     with open(BAD_TOKEN, 'w+') as bt_file:
         bt_file.write('none')
     try:
         with open('twitch_token.json', 'r') as tokens:
             urls = []
             bad_token = []
-            token_list = json.loads(tokens.read())                  #создаем лист токенов в json
-            for token in token_list:                                #проходимся по списку токенов с целью получить варианты воспроизведения в json
+            token_list = json.loads(tokens.read())  # создаем лист токенов в json
+            for token in token_list:  # проходимся по списку токенов с целью получить варианты воспроизведения в json
                 response = subprocess.Popen(
-                        ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
-                         "--twitch-oauth-token=" + token, channel_url, "-j"],
-                        stdout=subprocess.PIPE).communicate()[0]
+                    ["livestreamer",
+                     "--twitch-oauth-token=" + token, channel_url, "-j"],
+                    stdout=subprocess.PIPE).communicate()[0]
                 try:
-                    url = json.loads(response)['streams']['audio_only']['url']          #ищем ссылку на воспроизведение только со звуком
+                    url = json.loads(response)['streams']['audio_only'][
+                        'url']  # ищем ссылку на воспроизведение только со звуком
                 except:
                     try:
-                        url = json.loads(response)['streams']['worst']['url']           #в противном случае худшее качество
-                    except (ValueError, KeyError):                                      #возможно канал неактивен или токен протух - проверяем это
+                        url = json.loads(response)['streams']['worst']['url']  # в противном случае худшее качество
+                    except (ValueError, KeyError):  # возможно канал неактивен или токен протух - проверяем это
                         print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct? Then check token %s" % token
                         # sys.exit(1)
                         url = 'bad_token'
                         bad_token.append(token)
                 if url != 'bad_token':
                     urls.append(url)
-            with open(URLS, 'w+') as f:                                                 #записываем результаты в файлы
+                print '.',
+            print ''
+
+            with open(URLS, 'w+') as f:  # записываем результаты в файлы
                 f.write(json.dumps(urls))
             with open(BAD_TOKEN, 'w+') as f:
                 f.write(json.dumps(bad_token))
@@ -152,19 +156,22 @@ def prepare_processes():
         used_urls.append(url)
         with open('proxylist.json', 'w+') as f:
             f.write(json.dumps(proxy_in_use))
-    # for proxy in proxies:
-    #     # Preparing the process and giving it its own proxy
-    #     processes.append(
-    #         multiprocessing.Process(
-    #             target=open_url, kwargs={
-    #                 "url": get_url(), "proxy": {
-    #                     "http": proxy}}))
+            # for proxy in proxies:
+            #     # Preparing the process and giving it its own proxy
+            #     processes.append(
+            #         multiprocessing.Process(
+            #             target=open_url, kwargs={
+            #                 "url": get_url(), "proxy": {
+            #                     "http": proxy}}))
         print '.',
     print ''
 
 
 def open_url(url, proxy_in_use):
     errors = 0
+    free_urls = []
+    with open(FREE_URLS, 'w+') as f:
+        f.write(json.dumps(free_urls))
     with open(CUR_FILE, 'r') as f:
         current_viewers = int(f.read())
     current_viewers += 1
@@ -194,8 +201,13 @@ def open_url(url, proxy_in_use):
                 #         }
                 #     )
                 # )
+                with open(FREE_URLS, 'r') as f:
+                    free_urls = list(json.loads(f.read()))
+                with open(FREE_URLS, 'w+') as f:
+                    free_urls.append(url)
+                    f.write(json.dumps(free_urls))
+                    print "   Proxy %s is no more in game" % proxy_in_use["http"]
                 break
-
 
 
 if __name__ == "__main__":
