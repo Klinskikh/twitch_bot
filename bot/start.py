@@ -131,14 +131,15 @@ def open_url(url, proxy_in_use):
         try:
             with requests.Session() as s:
                 response = s.head(url, proxies=proxy_in_use)
-            print "Sent HEAD request with %s" % proxy_in_use["http"]
+            print "Sent HEAD request with %s with %d errors" % (proxy_in_use["http"], errors)
             time.sleep(10)
-            errors -= 1
+            if errors > 0:
+                errors -= 1
         except requests.exceptions.Timeout:
             print "  Timeout error for %s" % proxy_in_use["http"]
             break
         except requests.exceptions.ConnectionError:
-            print "  Connection error for %s" % proxy_in_use["http"]
+            print "  Connection error for %s, errors number is %d" % (proxy_in_use["http"], errors+1)
             errors += 1
             if errors > 10:
                 with open(URLS, 'r') as f:
@@ -146,7 +147,7 @@ def open_url(url, proxy_in_use):
                 with open(URLS, 'w+') as f:  # пополняем список освободившихся
                     free_urls.append(url)
                     f.write(json.dumps(free_urls))
-                print "   Proxy %s is no more in game" % proxy_in_use["http"]
+                print "                         Proxy %s is no more in game" % proxy_in_use["http"]
                 break
 
 
