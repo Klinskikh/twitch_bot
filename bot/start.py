@@ -52,47 +52,6 @@ def get_channel():  # функция готова
         sys.exit(1)
 
 
-# def get_proxies():
-#     # Reading the list of proxies
-#     proxies1 = get_proxy_list()
-#     try:
-#         with open(u'proxylist') as f:
-#             lines = ['http://{0}'.format(line.rstrip("\n").rstrip("']\\").lstrip("['u\\")) for line in f]
-#     except IOError as e:
-#         print "An error has occurred while trying to read the list of proxies: %s" % e.strerror
-#         sys.exit(1)
-#
-#     return lines
-
-
-# def get_url():                                                          #кандидат на исключение, аналог создан
-#     # Getting the json with all data regarding the stream
-#     try:
-#         with open("twitch_token") as tn:
-#             for tn_line in tn:
-#                 tn_line = tn_line.rstrip('\n')
-#                 response = subprocess.Popen(
-#                     ["livestreamer", "--twitch-oauth-token=" + tn_line, channel_url, "-j"],
-#                     stdout=subprocess.PIPE).communicate()[0]
-#     except subprocess.CalledProcessError:
-#         print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
-#         sys.exit(1)
-#     except OSError:
-#         print "An error has occurred while trying to use livestreamer package. Is it installed? Do you have Python in your PATH variable?"
-#
-#     # Decoding the url to the worst quality of the stream
-#     try:
-#         url = json.loads(response)['streams']['audio_only']['url']
-#     except:
-#         try:
-#             url = json.loads(response)['streams']['worst']['url']
-#         except (ValueError, KeyError):
-#             print "An error has occurred while trying to get the stream data. Is the channel online? Is the channel name correct?"
-#             sys.exit(1)
-#
-#     return url
-
-
 def get_urls():  # получаем ссылки для просмотра - на данном этапе готова
     with open(BAD_TOKEN, 'w+') as bt_file:
         bt_file.write('none')
@@ -121,7 +80,6 @@ def get_urls():  # получаем ссылки для просмотра - н�
                     urls.append(url)
                 print '.',
             print ''
-
             with open(URLS, 'w+') as f:  # записываем результаты в файлы
                 f.write(json.dumps(urls))
             with open(BAD_TOKEN, 'w+') as f:
@@ -136,13 +94,12 @@ def get_urls():  # получаем ссылки для просмотра - н�
 def prepare_processes():
     global processes
     proxies = open("proxylist.json", 'r')
-    proxy_in_use = list(json.loads(proxies.read()))
+    proxy_in_use = json.loads(proxies.read())
     urls = open(URLS, 'r')
-    used_urls = []
     if len(proxy_in_use) < 1:
         print "An error has occurred while preparing the process: Not enough proxy servers. Need at least 1 to function."
         sys.exit(1)
-    for url in json.loads(urls.read()):
+    for url in json.loads(urls.read()):  # для каждой ссылки формируем процесс и привязываем прокси
         processes.append(
             multiprocessing.Process(
                 target=open_url, kwargs={
@@ -152,26 +109,17 @@ def prepare_processes():
                 }
             )
         )
-        proxy_in_use.remove(proxy_in_use[0])
-        used_urls.append(url)
-        with open('proxylist.json', 'w+') as f:
-            f.write(json.dumps(proxy_in_use))
-            # for proxy in proxies:
-            #     # Preparing the process and giving it its own proxy
-            #     processes.append(
-            #         multiprocessing.Process(
-            #             target=open_url, kwargs={
-            #                 "url": get_url(), "proxy": {
-            #                     "http": proxy}}))
+        proxy_in_use.remove(proxy_in_use[0])  # удаляем использованный прокси из списка
         print '.',
     print ''
+    with open('proxylist.json', 'w+') as f:
+        f.write(json.dumps(proxy_in_use))
+    with open(URLS, 'w+') as f:  # очищаем список урлов
+        f.write(json.dumps(''))
 
 
 def open_url(url, proxy_in_use):
     errors = 0
-    free_urls = []
-    with open(FREE_URLS, 'w+') as f:
-        f.write(json.dumps(free_urls))
     with open(CUR_FILE, 'r') as f:
         current_viewers = int(f.read())
     current_viewers += 1
@@ -185,6 +133,7 @@ def open_url(url, proxy_in_use):
                 response = s.head(url, proxies=proxy_in_use)
             print "Sent HEAD request with %s" % proxy_in_use["http"]
             time.sleep(10)
+            errors -= 1
         except requests.exceptions.Timeout:
             print "  Timeout error for %s" % proxy_in_use["http"]
             break
@@ -192,21 +141,12 @@ def open_url(url, proxy_in_use):
             print "  Connection error for %s" % proxy_in_use["http"]
             errors += 1
             if errors > 10:
-                # processes.remove(
-                #     multiprocessing.Process(
-                #         target=open_url, kwargs={
-                #             "url": url, "proxy_in_use": {
-                #                 "http": proxy_in_use[0]
-                #             }
-                #         }
-                #     )
-                # )
-                with open(FREE_URLS, 'r') as f:
+                with open(URLS, 'r') as f:
                     free_urls = list(json.loads(f.read()))
-                with open(FREE_URLS, 'w+') as f:
+                with open(URLS, 'w+') as f:  # пополняем список освободившихся
                     free_urls.append(url)
                     f.write(json.dumps(free_urls))
-                    print "   Proxy %s is no more in game" % proxy_in_use["http"]
+                print "   Proxy %s is no more in game" % proxy_in_use["http"]
                 break
 
 
