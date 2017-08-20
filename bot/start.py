@@ -16,6 +16,17 @@ URLS = 'urls.json'
 USED_URLS = 'used_token.json'
 BAD_TOKEN = 'bad_token.json'
 FREE_URLS = 'free_urls.json'
+BAD_PROXY_LIST = 'bad_proxy_list.json'
+
+
+def get_channel():  # функция готова
+    # Reading the channel name - passed as an argument to this script
+    if len(sys.argv) >= 2:
+        global channel_url
+        channel_url += sys.argv[1]
+    else:
+        print "An error has occurred while trying to read arguments. Did you specify the channel?"
+        sys.exit(1)
 
 
 def get_proxy_list():  # функция готова
@@ -42,16 +53,6 @@ def get_proxy_list():  # функция готова
         sys.exit(1)
 
 
-def get_channel():  # функция готова
-    # Reading the channel name - passed as an argument to this script
-    if len(sys.argv) >= 2:
-        global channel_url
-        channel_url += sys.argv[1]
-    else:
-        print "An error has occurred while trying to read arguments. Did you specify the channel?"
-        sys.exit(1)
-
-
 def get_urls():  # получаем ссылки для просмотра - на данном этапе готова
     with open(BAD_TOKEN, 'w+') as bt_file:
         bt_file.write('none')
@@ -62,7 +63,7 @@ def get_urls():  # получаем ссылки для просмотра - н�
             token_list = json.loads(tokens.read())  # создаем лист токенов в json
             for token in token_list:  # проходимся по списку токенов с целью получить варианты воспроизведения в json
                 response = subprocess.Popen(
-                    ["livestreamer",
+                    ["livestreamer", "--http-header", "Client-ID=ewvlchtxgqq88ru9gmfp1gmyt6h2b93",
                      "--twitch-oauth-token=" + token, channel_url, "-j"],
                     stdout=subprocess.PIPE).communicate()[0]
                 try:
@@ -148,6 +149,24 @@ def open_url(url, proxy_in_use):
                     free_urls.append(url)
                     f.write(json.dumps(free_urls))
                 print "                         Proxy %s is no more in game" % proxy_in_use["http"]
+                with open(BAD_PROXY_LIST, 'r') as f:  # считываем имеющийся список самых тухлых проксей
+                    bad_proxy_list = json.loads(f.read())
+                    bad_proxy_list.append(proxy_in_use)
+                with open(BAD_PROXY_LIST, 'w+') as f:  # пополняем список самых тухлых проксей
+                    f.write(json.dumps(bad_proxy_list))
+                # multiprocessing.Process(
+                #     target=open_url, kwargs={
+                #         "url": url, "proxy_in_use": {
+                #             "http": proxy_in_use[0]
+                #         }
+                #     }
+                # )
+                # time.sleep(random.randint(1, 5) * n)
+                # process.daemon = True
+                # process.start()
+                # proxy_in_use.remove(proxy_in_use[0])  # удаляем использованный прокси из списка
+                # with open('proxylist.json', 'w+') as f:
+                #     f.write(json.dumps(proxy_in_use))
                 break
 
 
@@ -158,7 +177,7 @@ if __name__ == "__main__":
     print "Obtain and safe proxy list in file"
     get_proxy_list()
     print "DONE"
-    print "Otraining urls list"
+    print "Otaining urls list"
     get_urls()
     print "Ontained urls list"
     print "Preparing the processes..."
